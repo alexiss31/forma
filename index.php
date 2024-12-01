@@ -1,0 +1,104 @@
+<?php
+session_start();
+include_once("includes/database.php");
+
+// Vérification si l'utilisateur est connecté
+if (!isset($_SESSION['user_id'])) {
+    header("Location: connexion.php");
+    exit();
+}
+
+// Récupération des informations de l'utilisateur
+$typeUtilisateur = $_SESSION['type'];
+
+// Récupération des formations dans la base de données uniquement si l'utilisateur n'est pas directeur
+$formations = [];
+if ($typeUtilisateur !== 'directeur') {
+    $stmt = $pdo->prepare("
+        SELECT 
+            f.id_formation, 
+            f.libelle 
+        FROM Formation f
+    ");
+    $stmt->execute();
+    $formations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+?>
+
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalogue des Formations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Fonction pour afficher le formulaire
+        function toggleForm() {
+            var form = document.getElementById('create-form');
+            form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+        }
+    </script>
+</head>
+<?php include_once('includes/navbar.php'); ?>
+
+<body class="bg-gray-100 text-gray-800">
+    <header style="background-color: #5FB6B6;" class="text-white py-4 mt-8">
+        <div class="container mx-auto text-center">
+            <h1 class="text-2xl font-bold">Catalogue des Formations</h1>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-6">
+        <!-- Formulaire de création de formation visible seulement pour le directeur et l'admin -->
+        <?php if ($typeUtilisateur === 'directeur' || $typeUtilisateur === 'admin'): ?>
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <!-- Encadré avec la question et le bouton -->
+                <h2 class="text-xl font-semibold text-teal-600 mb-4">Vous souhaitez créer une formation ?</h2>
+                <button onclick="toggleForm()" class="bg-teal-600 text-white py-2 px-4 rounded-lg hover:bg-teal-700 focus:outline-none mb-4">
+                    Créer une formation
+                </button>
+
+                <!-- Formulaire caché initialement -->
+                <div id="create-form" style="display: none;">
+                    <form action="create_formation.php" method="POST">
+                        <div class="mb-4">
+                            <label for="libelle" class="block text-sm font-semibold text-gray-800">Libellé de la formation</label>
+                            <input type="text" name="libelle" id="libelle" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="objectifs" class="block text-sm font-semibold text-gray-800">Objectifs de la formation</label>
+                            <textarea name="objectifs" id="objectifs" rows="4" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="cout" class="block text-sm font-semibold text-gray-800">Coût (€)</label>
+                            <input type="number" name="cout" id="cout" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <button type="submit" class="bg-teal-600 text-white py-2 px-4 rounded-lg hover:bg-teal-700 focus:outline-none">Créer la formation</button>
+                    </form>
+                </div>
+            </div>
+
+        <?php else: ?>
+            <!-- Liste des formations pour les autres utilisateurs -->
+            <?php if (count($formations) > 0): ?>
+                <div class="grid gap-4">
+                    <?php foreach ($formations as $formation): ?>
+                        <div class="flex justify-between items-center bg-white p-4 shadow rounded">
+                            <span class="text-lg font-medium"><?= htmlspecialchars($formation['libelle']) ?></span>
+                            <a href="details.php?id=<?= $formation['id_formation'] ?>" class="text-blue-500 hover:text-blue-700"> Voir les détails de la formation ➔ </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <p class="text-center text-gray-600">Aucune formation disponible pour le moment.</p>
+            <?php endif; ?>
+        <?php endif; ?>
+    </main>
+</body>
+
+</html>

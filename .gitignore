@@ -1,0 +1,13 @@
+# Ignorer les dossiers de dépendances de Node.js
+/node_modules/
+
+# Ignorer les fichiers de configuration de Tailwind (si vous ne souhaitez pas partager votre fichier config)
+/tailwind.config.js
+/postcss.config.js
+
+# Ignorer le répertoire de build (par exemple, si vous avez un dossier "dist" ou "build")
+/dist/
+/build/
+
+# Si vous utilisez des fichiers .env pour la configuration, vous pouvez aussi les ignorer
+/.env
