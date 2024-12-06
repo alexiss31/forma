@@ -22,8 +22,21 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $idFormation = $_GET['id'];
 
-// Récupération des informations de la formation à modifier
-$stmt = $pdo->prepare("SELECT * FROM formation WHERE id_formation = ?");
+// Récupération des informations des tables formation et informations
+$stmt = $pdo->prepare("
+    SELECT 
+        f.libelle, i.heureDeb, i.heureFin, i.lieu, 
+        inter.nom, p.libelle, f.objectifs, c.libelle, f.cout, f.date_limite_inscription, i.nb_max_participants
+    FROM formation f
+    JOIN information i ON f.id_information = i.id_information
+    JOIN intervenir inte ON f.id_formation = inte.id_formation
+    JOIN intervenant inter ON inte.id_intervenant = inter.id_intervenant
+    JOIN viser vi ON f.id_formation = vi.id_formation
+    JOIN public p ON vi.id_public = p.id_public
+    JOIN contenir con ON f.id_formation = con.id_formation
+    JOIN contenu c ON con.id_contenu = c.id_contenu
+    WHERE f.id_formation = ?
+");
 $stmt->execute([$idFormation]);
 $formation = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -35,27 +48,62 @@ if (!$formation) {
 // Traitement du formulaire de modification
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $libelle = trim($_POST['libelle']);
+    $date = trim($_POST['date']);
+    $heureDeb = trim($_POST['heureDeb']);
+    $heureFin = trim($_POST['heureFin']);
+    $lieu = trim($_POST['lieu']);
+    $intervenants = trim($_POST['intervenants']);
+    $public_vise = trim($_POST['public_vise']);
     $objectifs = trim($_POST['objectifs']);
+    $contenu = trim($_POST['contenu']);
     $cout = trim($_POST['cout']);
-    $dateLimiteInscription = trim($_POST['date_limite_inscription']);
-    $idInformation = trim($_POST['id_information']);
+    $date_limite_inscription = trim($_POST['date_limite_inscription']);
 
     // Validation des champs
-    if (empty($libelle) || empty($objectifs) || empty($dateLimiteInscription) || empty($idInformation)) {
+    if (
+        empty($libelle) || empty($date) || empty($heureDeb) || empty($heureFin) || 
+        empty($lieu) || empty($intervenants) || empty($public_vise) || 
+        empty($objectifs) || empty($contenu) || empty($cout) || 
+        empty($date_limite_inscription)
+    ) {
         $error = "Tous les champs sont obligatoires.";
     } else {
-        // Mise à jour dans la base de données
-        $stmt = $pdo->prepare("UPDATE formation 
-                               SET libelle = ?, objectifs = ?, cout = ?, date_limite_inscription = ?, id_information = ?
-                               WHERE id_formation = ?");
-        $stmt->execute([$libelle, $objectifs, $cout, $dateLimiteInscription, $idInformation, $idFormation]);
+        try {
+            // Début de la transaction
+            $pdo->beginTransaction();
 
-        // Ajouter un message de succès dans la session
-        $_SESSION['update_success_message'] = "La formation a été mise à jour avec succès.";
+            // Mise à jour de la table `formation`
+            $stmtFormation = $pdo->prepare("
+                UPDATE formation 
+                SET libelle = ?, date = ?, heureDeb = ?, heureFin = ?, 
+                    lieu = ?, 
+                WHERE id_formation = ?
+            ");
+            $stmtFormation->execute([$libelle, $date, $heureDeb, $heureFin, $lieu, $idFormation]);
 
-        // Redirection après modification
-        header("Location: gerer.php");
-        exit();
+            // Mise à jour de la table `informations`
+            $stmtInformations = $pdo->prepare("
+                UPDATE informations 
+                SET intervenants = ?, public_vise = ?, objectifs = ?, contenu = ?, 
+                    cout = ?, date_limite_inscription = ? 
+                WHERE id_formation = ?
+            ");
+            $stmtInformations->execute([$intervenants, $public_vise, $objectifs, $contenu, $cout, $date_limite_inscription, $idFormation]);
+
+            // Commit de la transaction
+            $pdo->commit();
+
+            // Ajouter un message de succès dans la session
+            $_SESSION['update_success_message'] = "La formation a été mise à jour avec succès.";
+
+            // Redirection après modification
+            header("Location: gerer.php");
+            exit();
+        } catch (Exception $e) {
+            // En cas d'erreur, annuler la transaction
+            $pdo->rollBack();
+            $error = "Erreur lors de la mise à jour : " . $e->getMessage();
+        }
     }
 }
 ?>
@@ -72,13 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body class="bg-gray-100 text-gray-800 font-sans">
     <?php include_once 'includes/navbar.php'; ?>
-    <header style="background-color: #5FB6B6;" class="text-white py-4 mt-8">
+    <header class="bg-teal-600 text-white py-5 mt-8">
         <div class="container mx-auto text-center">
-            <h1 class="text-2xl font-bold">Gérer les Formations</h1>
+            <h1 class="text-2xl font-bold">Modifier une Formation</h1>
         </div>
     </header>
     <div class="container mx-auto p-8">
-
 
         <?php if (isset($error)): ?>
             <p class="text-red-500 text-center mb-4"><?= htmlspecialchars($error) ?></p>
@@ -92,9 +139,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div>
-                <label for="objectifs" class="block text-sm font-medium">Objectifs :</label>
-                <input type="text" id="objectifs" name="objectifs" value="<?= htmlspecialchars($formation['objectifs']) ?>"
+                <label for="date" class="block text-sm font-medium">Date :</label>
+                <input type="date" id="date" name="date" value="<?= htmlspecialchars($formation['date']) ?>"
                     class="w-full p-2 border border-gray-300 rounded-md" required>
+            </div>
+
+            <div>
+                <label for="heureDeb" class="block text-sm font-medium">Heure début :</label>
+                <input type="time" id="heureDeb" name="heureDeb" value="<?= htmlspecialchars($formation['heureDeb']) ?>"
+                    class="w-full p-2 border border-gray-300 rounded-md" required>
+            </div>
+
+            <div>
+                <label for="heureFin" class="block text-sm font-medium">Heure fin :</label>
+                <input type="time" id="heureFin" name="heureFin" value="<?= htmlspecialchars($formation['heureFin']) ?>"
+                    class="w-full p-2 border border-gray-300 rounded-md" required>
+            </div>
+
+            <div>
+                <label for="lieu" class="block text-sm font-medium">Lieu :</label>
+                <input type="text" id="lieu" name="lieu" value="<?= htmlspecialchars($formation['lieu']) ?>"
+                    class="w-full p-2 border border-gray-300 rounded-md" required>
+            </div>
+
+            <div>
+                <label for="intervenants" class="block text-sm font-medium">Intervenants :</label>
+                <textarea id="intervenants" name="intervenants" rows="2"
+                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['intervenants']) ?></textarea>
+            </div>
+
+            <div>
+                <label for="public_vise" class="block text-sm font-medium">Public visé :</label>
+                <textarea id="public_vise" name="public_vise" rows="2"
+                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['public_vise']) ?></textarea>
+            </div>
+
+            <div>
+                <label for="objectifs" class="block text-sm font-medium">Objectifs :</label>
+                <textarea id="objectifs" name="objectifs" rows="2"
+                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['objectifs']) ?></textarea>
+            </div>
+
+            <div>
+                <label for="contenu" class="block text-sm font-medium">Contenu :</label>
+                <textarea id="contenu" name="contenu" rows="4"
+                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['contenu']) ?></textarea>
             </div>
 
             <div>
@@ -110,17 +199,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     class="w-full p-2 border border-gray-300 rounded-md" required>
             </div>
 
-            <div>
-                <label for="id_information" class="block text-sm font-medium">ID Information :</label>
-                <input type="number" id="id_information" name="id_information" value="<?= htmlspecialchars($formation['id_information']) ?>"
-                    class="w-full p-2 border border-gray-300 rounded-md" required>
-            </div>
-
             <div class="flex justify-between">
                 <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-700 transition">
                     Modifier
                 </button>
-                <a href="gerer.php" class="bg-red-500 text-gray-800 py-2 px-4 rounded-md hover:bg-red-700 transition">
+                <a href="gerer.php" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-700 transition">
                     Annuler
                 </a>
             </div>

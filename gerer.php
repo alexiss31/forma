@@ -53,9 +53,9 @@ $formations = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
     <!-- Navbar -->
     <?php include_once 'includes/navbar.php'; ?>
 
-     <header style="background-color: #5FB6B6;" class="text-white py-4 mt-8">
+     <header class="bg-teal-600 text-white py-5 mt-8">
         <div class="container mx-auto text-center">
-            <h1 class="text-2xl font-bold">Gérer les Formations</h1>
+            <h1 class="text-3xl font-bold">Gérer les Formations</h1>
         </div>
     </header>
     <div class="bg-white rounded-lg shadow-lg p-6">

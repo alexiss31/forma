@@ -25,12 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $faxInterlocuteur = $_POST['fax_interlocuteur'];
 
     $nomStagiaire = $_POST['nom_stagiaire'];
-    $adresseStagiaire = $_POST['adresse_stagiaire'];
     $codePostalStagiaire = $_POST['code_postal_stagiaire'];
     $villeStagiaire = $_POST['ville_stagiaire'];
     $emailStagiaire = $_POST['email_stagiaire'];
-    $statutStagiaire = $_POST['statut_stagiaire'];
+    $mdpStagiaire = $_POST['mdp_stagiaire']; // Mot de passe haché
+    $typeStagiaire = $_POST['type_stagiaire']; // stagiaire, bénévole, admin, etc.
     $fonctionStagiaire = $_POST['fonction_stagiaire'];
+    $idPublic = $_POST['id_public']; // ID du public cible
 
     $formations = $_POST['formations']; // Tableau des formations demandées
 
@@ -38,24 +39,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($nomAssociation) || empty($nomStagiaire) || empty($formations)) {
         $error = "Veuillez remplir tous les champs obligatoires.";
     } else {
-        // Insertion des données dans la base de données
-        $stmt = $pdo->prepare("INSERT INTO inscription 
-            (nom_association, icom, nom_interlocuteur, email_interlocuteur, tel_interlocuteur, fax_interlocuteur, 
-             nom_stagiaire, adresse_stagiaire, code_postal_stagiaire, ville_stagiaire, email_stagiaire, 
-             statut_stagiaire, fonction_stagiaire, formations) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        try {
+            // Démarrage d'une transaction
+            $pdo->beginTransaction();
 
-        $stmt->execute([
-            $nomAssociation, $icom, $nomInterlocuteur, $emailInterlocuteur, $telInterlocuteur, $faxInterlocuteur,
-            $nomStagiaire, $adresseStagiaire, $codePostalStagiaire, $villeStagiaire, $emailStagiaire,
-            $statutStagiaire, $fonctionStagiaire, implode(", ", $formations) // Stocke les formations en tant que chaîne
-        ]);
+            // Insertion des données dans la table Association
+            $stmtAssoc = $pdo->prepare("INSERT INTO Association 
+                (n_icom, nom_association, nom_interlocuteur, email_interlocuteur, tel_interlocuteur, fax_interlocuteur) 
+                VALUES (?, ?, ?, ?, ?, ?)");
+            $stmtAssoc->execute([$icom, $nomAssociation, $nomInterlocuteur, $emailInterlocuteur, $telInterlocuteur, $faxInterlocuteur]);
 
-        // Redirection vers index.php après enregistrement
-        header("Location: index.php");
-        exit();
+            // Insertion des données dans la table Stagiaire
+            $stmtStagiaire = $pdo->prepare("INSERT INTO Stagiaire 
+                (nom, email, mdp, cp, ville, n_icom, type, fonction, id_public) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmtStagiaire->execute([
+                $nomStagiaire, $emailStagiaire, password_hash($mdpStagiaire, PASSWORD_BCRYPT), 
+                $codePostalStagiaire, $villeStagiaire, $icom, $typeStagiaire, 
+                $fonctionStagiaire, $idPublic
+            ]);
+
+            // Récupération de l'ID du stagiaire créé
+            $idStagiaire = $pdo->lastInsertId();
+
+            // Gestion des inscriptions aux formations
+            $stmtInscription = $pdo->prepare("INSERT INTO Stagiaire_Formation 
+                (id_stagiaire, id_formation, date_inscription) 
+                VALUES (?, ?, NOW())");
+
+            foreach ($formations as $idFormation) {
+                $stmtInscription->execute([$idStagiaire, $idFormation]);
+            }
+
+            // Validation de la transaction
+            $pdo->commit();
+
+            echo "Inscription réussie !";
+        } catch (PDOException $e) {
+            // Annulation de la transaction en cas d'erreur
+            $pdo->rollBack();
+            echo "Erreur : " . $e->getMessage();
+        }
     }
+    header("Location: index.php");
+    exit();
 }
+
+
+
+
 ?>
 
 <!DOCTYPE html>
@@ -71,9 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-gray-100 text-gray-800 font-sans">
     <?php include_once 'includes/navbar.php'; ?>
 
-    <header style="background-color: #5FB6B6;" class="text-white py-4 mt-8">
+    <header class="bg-teal-600 text-white py-5 mt-8">
         <div class="container mx-auto text-center">
-            <h1 class="text-2xl font-bold">Inscription Stagiaire</h1>
+            <h1 class="text-3xl font-bold">Inscription Stagiaire</h1>
         </div>
     </header>
 
@@ -169,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </fieldset>
 
-            <button type="submit" style="background-color: #5FB6B6;" onmouseover="this.style.backgroundColor='#4D9C9C'" onmouseout="this.style.backgroundColor='#5FB6B6'" class="w-full text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+            <button type="submit" onmouseover="this.style.backgroundColor='#0f766e'" onmouseout="this.style.backgroundColor='#0D9488'" class="bg-teal-600 w-full text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
                 Envoyer l'inscription
             </button>
         </form>

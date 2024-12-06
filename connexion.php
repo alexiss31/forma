@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <section class="flex justify-between items-center w-full h-screen p-9">
 
         <div class="w-1/2">
-            <div class="bg-white rounded-3xl p-4 m-auto" style="max-width:600px;">
+            <div class="bg-white rounded-3xl shadow-2xl shadow-zinc-900 p-6 m-auto" style="max-width:600px;">
             <h1 class="font-bold text-2xl flex justify-center">Connexion</h1>
 
             <form class="mt-6" action = "connexion.php" method ="post">
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input name="mdp" type="password" id="mdp" class="mt-1 block w-full px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"> <br>
                 </div>
 
-                <button type="submit" class="w-full py-2 px-4 text-white font-semibold rounded-3xl transition duration-300  " style="background-color: #5FB6B6;" onmouseover="this.style.backgroundColor='#4D9C9C'" onmouseout="this.style.backgroundColor='#5FB6B6'">Se connecter</button>
+                <button type="submit" class="bg-teal-600 w-full py-2 px-4 text-white font-semibold rounded-3xl transition duration-300  " onmouseover="this.style.backgroundColor='#0f766e'" onmouseout="this.style.backgroundColor='#0D9488'">Se connecter</button>
             </form>
             </div>
         </div>

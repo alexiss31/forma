@@ -18,7 +18,8 @@ $stmt = $pdo->prepare("
         f.cout, 
         f.date_limite_inscription, 
         i.date_formation, 
-        i.horaire, 
+        i.heureDeb,
+        i.heureFin, 
         i.lieu, 
         i.nb_max_participants
     FROM Formation f
@@ -47,10 +48,9 @@ $intervenants = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Récupération des publics visés
 $stmt = $pdo->prepare("
     SELECT 
-        p.libelle 
-    FROM viser v
-    INNER JOIN Public p ON v.id_public = p.id_public
-    WHERE v.id_formation = ?
+        p.libelle from public p, viser v, formation f
+    where   p.id_public = v.id_public AND v.id_formation = f.id_formation
+    and f.id_formation = ?
 ");
 $stmt->execute([$id_formation]);
 $publics = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -81,7 +81,7 @@ $contenus = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include_once("includes/navbar.php"); ?>
 
     <!-- Header Section -->
-    <header class="bg-teal-600 text-white py-8 mt-8 shadow-lg">
+    <header class="bg-teal-600 text-white py-5 mt-8 shadow-lg">
         <div class="container mx-auto text-center">
             <h1 class="text-3xl font-bold">Détails de la Formation</h1>
         </div>
@@ -119,19 +119,30 @@ $contenus = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
 
                     <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                        <h4 class="text-xl font-semibold text-teal-600 mb-2">Horaire</h4>
-                        <p class="text-gray-700"><?= htmlspecialchars($formation['horaire']) ?></p>
+                        <h4 class="text-xl font-semibold text-teal-600 mb-2">Heure Début</h4>
+                        <p class="text-gray-700"><?= htmlspecialchars($formation['heureDeb']) ?></p>
+                    </div>
+
+                    <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                        <h4 class="text-xl font-semibold text-teal-600 mb-2">Heure Fin</h4>
+                        <p class="text-gray-700"><?= htmlspecialchars($formation['heureDeb']) ?></p>
                     </div>
 
                     <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
                         <h4 class="text-xl font-semibold text-teal-600 mb-2">Lieu</h4>
                         <p class="text-gray-700"><?= htmlspecialchars($formation['lieu']) ?></p>
                     </div>
+
+                    <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                        <h4 class="text-xl font-semibold text-teal-600 mb-2">Nombre maximum de participants</h4>
+                        <p class="text-gray-700"><?= htmlspecialchars($formation['nb_max_participants']) ?></p>
+                    </div>
                 </div>
-                <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                
+                <!-- <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
                     <h4 class="text-xl font-semibold text-teal-600 mb-2">Nombre maximum de participants</h4>
-                    <p class="text-gray-700"><?= htmlspecialchars($formation['nb_max_participants']) ?></p>
-                </div>
+                    <p class="text-gray-700"></p>
+                </div> -->
 
 
                 <!-- Intervenants Section -->
