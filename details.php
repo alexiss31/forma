@@ -1,4 +1,5 @@
 <?php
+session_save_path('sessions');
 session_start();
 include_once("includes/database.php");
 
@@ -12,7 +13,8 @@ $id_formation = intval($_GET['id']);
 
 // Récupération des détails de la formation
 $stmt = $pdo->prepare("
-    SELECT 
+    SELECT
+        f.id_formation,
         f.libelle, 
         f.objectifs, 
         f.cout, 
@@ -96,6 +98,10 @@ $contenus = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <h2 class="text-2xl font-bold text-teal-700 mb-4"><?= htmlspecialchars($formation['libelle']) ?></h2>
 
             <div class="space-y-6">
+                <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow text-center">
+                    <h4 class="text-xl font-semibold text-teal-600 mb-2">N° de la Formation</h4>
+                    <p class="text-gray-700"><?= htmlspecialchars($formation['id_formation']) ?></p>
+                </div>
                 <!-- Objectifs, Coût et Autres détails -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-teal-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">

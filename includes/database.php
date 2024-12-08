@@ -3,7 +3,7 @@
 	$hote= "localhost";
 	$login= "root";
 	$mdp= "";
-	$nombd= "formation";
+	$nombd= "forma";
 
 	// Connection au serveur
 	try { 

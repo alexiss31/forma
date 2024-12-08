@@ -1,4 +1,5 @@
 <?php
+session_save_path('sessions');
 session_start();
 include_once("includes/database.php");
 
@@ -22,20 +23,32 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $idFormation = $_GET['id'];
 
-// Récupération des informations des tables formation et informations
+// Récupération des informations de la formation
 $stmt = $pdo->prepare("
     SELECT 
-        f.libelle, i.heureDeb, i.heureFin, i.lieu, 
-        inter.nom, p.libelle, f.objectifs, c.libelle, f.cout, f.date_limite_inscription, i.nb_max_participants
-    FROM formation f
-    JOIN information i ON f.id_information = i.id_information
-    JOIN intervenir inte ON f.id_formation = inte.id_formation
-    JOIN intervenant inter ON inte.id_intervenant = inter.id_intervenant
-    JOIN viser vi ON f.id_formation = vi.id_formation
-    JOIN public p ON vi.id_public = p.id_public
-    JOIN contenir con ON f.id_formation = con.id_formation
-    JOIN contenu c ON con.id_contenu = c.id_contenu
+        f.libelle, 
+        i.date_formation AS date, 
+        i.heureDeb, 
+        i.heureFin, 
+        i.lieu, 
+        i.nb_max_participants,
+        GROUP_CONCAT(DISTINCT inter.nom SEPARATOR ', ') AS intervenants, 
+        GROUP_CONCAT(DISTINCT p.libelle SEPARATOR ', ') AS public_vise, 
+        f.objectifs, 
+        GROUP_CONCAT(DISTINCT c.libelle SEPARATOR ', ') AS contenu, 
+        f.cout, 
+        f.date_limite_inscription, 
+        i.nb_max_participants
+    FROM Formation f
+    JOIN Information i ON f.id_information = i.id_information
+    LEFT JOIN intervenir inte ON f.id_formation = inte.id_formation
+    LEFT JOIN intervenant inter ON inte.id_intervenant = inter.id_intervenant
+    LEFT JOIN viser vi ON f.id_formation = vi.id_formation
+    LEFT JOIN Public p ON vi.id_public = p.id_public
+    LEFT JOIN Contenir con ON f.id_formation = con.id_formation
+    LEFT JOIN Contenu c ON con.id_contenu = c.id_contenu
     WHERE f.id_formation = ?
+    GROUP BY f.id_formation
 ");
 $stmt->execute([$idFormation]);
 $formation = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -58,12 +71,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contenu = trim($_POST['contenu']);
     $cout = trim($_POST['cout']);
     $date_limite_inscription = trim($_POST['date_limite_inscription']);
+    $nb_max_participants = trim($_POST['nb_max_participants']);
 
     // Validation des champs
     if (
-        empty($libelle) || empty($date) || empty($heureDeb) || empty($heureFin) || 
-        empty($lieu) || empty($intervenants) || empty($public_vise) || 
-        empty($objectifs) || empty($contenu) || empty($cout) || 
+        empty($libelle) || empty($date) || empty($heureDeb) || empty($heureFin) ||
+        empty($lieu) || empty($intervenants) || empty($public_vise) ||
+        empty($objectifs) || empty($contenu) || empty($cout) ||
         empty($date_limite_inscription)
     ) {
         $error = "Tous les champs sont obligatoires.";
@@ -72,31 +86,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Début de la transaction
             $pdo->beginTransaction();
 
+            // Mise à jour de la table `information`
+            $stmtInformation = $pdo->prepare("
+                UPDATE Information 
+                SET date_formation = ?, heureDeb = ?, heureFin = ?, lieu = ?, nb_max_participants = ?
+                WHERE id_information = (
+                    SELECT id_information FROM Formation WHERE id_formation = ?
+                )
+            ");
+            $stmtInformation->execute([$date, $heureDeb, $heureFin, $lieu, $nb_max_participants, $idFormation]);
+
             // Mise à jour de la table `formation`
             $stmtFormation = $pdo->prepare("
-                UPDATE formation 
-                SET libelle = ?, date = ?, heureDeb = ?, heureFin = ?, 
-                    lieu = ?, 
+                UPDATE Formation 
+                SET libelle = ?, objectifs = ?, cout = ?, date_limite_inscription = ?
                 WHERE id_formation = ?
             ");
-            $stmtFormation->execute([$libelle, $date, $heureDeb, $heureFin, $lieu, $idFormation]);
-
-            // Mise à jour de la table `informations`
-            $stmtInformations = $pdo->prepare("
-                UPDATE informations 
-                SET intervenants = ?, public_vise = ?, objectifs = ?, contenu = ?, 
-                    cout = ?, date_limite_inscription = ? 
-                WHERE id_formation = ?
-            ");
-            $stmtInformations->execute([$intervenants, $public_vise, $objectifs, $contenu, $cout, $date_limite_inscription, $idFormation]);
+            $stmtFormation->execute([$libelle, $objectifs, $cout, $date_limite_inscription, $idFormation]);
 
             // Commit de la transaction
             $pdo->commit();
 
-            // Ajouter un message de succès dans la session
+            // Redirection avec un message de succès
             $_SESSION['update_success_message'] = "La formation a été mise à jour avec succès.";
-
-            // Redirection après modification
             header("Location: gerer.php");
             exit();
         } catch (Exception $e) {
@@ -107,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -165,25 +178,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div>
                 <label for="intervenants" class="block text-sm font-medium">Intervenants :</label>
                 <textarea id="intervenants" name="intervenants" rows="2"
-                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['intervenants']) ?></textarea>
+                    class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['intervenants']) ?></textarea>
             </div>
 
             <div>
                 <label for="public_vise" class="block text-sm font-medium">Public visé :</label>
                 <textarea id="public_vise" name="public_vise" rows="2"
-                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['public_vise']) ?></textarea>
+                    class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['public_vise']) ?></textarea>
             </div>
 
             <div>
                 <label for="objectifs" class="block text-sm font-medium">Objectifs :</label>
                 <textarea id="objectifs" name="objectifs" rows="2"
-                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['objectifs']) ?></textarea>
+                    class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['objectifs']) ?></textarea>
             </div>
 
             <div>
                 <label for="contenu" class="block text-sm font-medium">Contenu :</label>
                 <textarea id="contenu" name="contenu" rows="4"
-                          class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['contenu']) ?></textarea>
+                    class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['contenu']) ?></textarea>
             </div>
 
             <div>
@@ -196,6 +209,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="date_limite_inscription" class="block text-sm font-medium">Date limite d'inscription :</label>
                 <input type="date" id="date_limite_inscription" name="date_limite_inscription"
                     value="<?= htmlspecialchars($formation['date_limite_inscription']) ?>"
+                    class="w-full p-2 border border-gray-300 rounded-md" required>
+            </div>
+
+            <div>
+                <label for="nb_max_participants" class="block text-sm font-medium">Nombre de participants maximum:</label>
+                <input type="nb_max_participants" id="nb_max_participants" name="nb_max_participants"
+                    value="<?= htmlspecialchars($formation['nb_max_participants']) ?>"
                     class="w-full p-2 border border-gray-300 rounded-md" required>
             </div>
 

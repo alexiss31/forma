@@ -1,4 +1,5 @@
 <?php
+session_save_path('sessions');
 session_start();
 include_once("includes/database.php");
 
@@ -15,14 +16,39 @@ $typeUtilisateur = $_SESSION['type'];
 $formations = [];
 if ($typeUtilisateur !== 'directeur') {
     $stmt = $pdo->prepare("
-        SELECT 
-            f.id_formation, 
-            f.libelle 
-        FROM Formation f
+        SELECT
+            f.id_formation,
+            f.libelle
+        FROM formation f
     ");
     $stmt->execute();
     $formations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+// Récupération des inscriptions de l'utilisateur connecté
+$inscriptions = [];
+if ($typeUtilisateur !== 'directeur') {
+    $stmtInscriptions = $pdo->prepare("
+        SELECT
+            sf.id_formation
+        FROM stagiaire_formation sf
+        WHERE sf.id_stagiaire = (SELECT id_stagiaire FROM stagiaire WHERE id_utilisateur = ?)
+    ");
+    $stmtInscriptions->execute([$_SESSION['user_id']]);
+    $inscriptions = $stmtInscriptions->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Affichage des messages de succès ou d'erreur
+if (isset($_SESSION['success_message'])) {
+    echo '<p class="bg-green-100 text-green-800 px-4 py-2 rounded-md text-center">' . htmlspecialchars($_SESSION['success_message']) . '</p>';
+    unset($_SESSION['success_message']); // Supprime le message après l'affichage
+}
+
+if (isset($_SESSION['error_message'])) {
+    echo '<p class="bg-green-100 text-green-800 px-4 py-2 rounded-md text-center">' . htmlspecialchars($_SESSION['error_message']) . '</p>';
+    unset($_SESSION['error_message']); // Supprime le message après l'affichage
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -40,9 +66,9 @@ if ($typeUtilisateur !== 'directeur') {
             form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
 
             const button = document.getElementById('button');
-            if(button.innerText === 'Créer une formation'){
+            if (button.innerText === 'Créer une formation') {
                 button.innerText = 'Annuler la formation';
-            } else{
+            } else {
                 button.innerText = 'Créer une formation';
             }
         }
@@ -126,6 +152,11 @@ if ($typeUtilisateur !== 'directeur') {
                         </div>
 
                         <div class="mb-4">
+                            <label for="nb_max_participants" class="block text-sm font-semibold text-gray-800">Nombre de participants maximum</label>
+                            <input type="number" name="nb_max_participants" id="nb_max_participants" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div class="mb-4">
                             <label for="dateLimit" class="block text-sm font-semibold text-gray-800">Date limite d'inscription</label>
                             <input type="date" name="dateLimit" id="dateLimit" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
@@ -136,15 +167,27 @@ if ($typeUtilisateur !== 'directeur') {
             </div>
         <?php endif; ?>
 
-        <?php if ($typeUtilisateur != 'directeur') : ?>
+        <?php if ($typeUtilisateur !== 'directeur') : ?>
             <!-- Liste des formations pour les autres utilisateurs -->
             <?php if (count($formations) > 0) : ?>
                 <div class="grid gap-4">
                     <?php foreach ($formations as $formation) : ?>
                         <div class="flex justify-between items-center bg-white p-4 shadow rounded">
-                            <span class="text-lg font-medium"><?= htmlspecialchars($formation['libelle']) ?></span>
-                            <a href="details.php?id=<?= $formation['id_formation'] ?>" class="text-blue-500 hover:text-blue-700"> Voir les détails de la formation ➔ </a>
+                            <span class="text-lg font-medium">
+                                <?= htmlspecialchars($formation['libelle']) ?>
+                            </span>
+                            <div class="flex items-center space-x-4">
+                                <?php if (in_array($formation['id_formation'], array_column($inscriptions, 'id_formation'))) : ?>
+                                    <span class="text-green-500 font-medium">
+                                        Inscrit
+                                    </span>
+                                <?php endif; ?>
+                                <a href="details.php?id=<?= $formation['id_formation'] ?>" class="text-blue-500 hover:text-blue-700">
+                                    Voir les détails de la formation ➔
+                                </a>
+                            </div>
                         </div>
+
                     <?php endforeach; ?>
                 </div>
             <?php else : ?>

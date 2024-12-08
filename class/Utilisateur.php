@@ -25,26 +25,29 @@ class utilisateur
         $this->id_public = $id_public;
     }
 
-    public function seConnecter($email, $mdp)
+    public function seConnecter($login, $mdp)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM stagiaire WHERE email = :email");
-        $stmt->bindParam(':email', $email, PDO::PARAM_STR);
+        // Préparer la requête pour sélectionner l'utilisateur par login
+        $stmt = $this->pdo->prepare("SELECT u.*, r.nom_role AS type FROM Utilisateur u JOIN Role r ON u.id_role = r.id_role WHERE login = :login");
+        $stmt->bindParam(':login', $login, PDO::PARAM_STR);
         $stmt->execute();
         $user = $stmt->fetch();
 
-        //Si l'email existe et que le mot de passe correspond, on est loggué et redirigé avec la page index
+        // Si le login existe et que le mot de passe correspond, on est loggué et redirigé avec la page index
         if ($user) {
-            if (hash("sha256",$mdp) == $user["mdp"]) {
+            if (hash("sha256", $mdp) == $user["mdp"]) {
                 echo "Mot de passe vérifié avec succès !";
                 return $user;
             } else {
-                echo "Échec de la vérification du mot de passe. ";
+                echo "Échec de la vérification du mot de passe.";
             }
         } else {
-            echo "L'utilisateur avec cet email n'existe pas.";
+            echo "L'utilisateur avec ce login n'existe pas.";
         }
         return null;
     }
+
+
 
     public function verifierMotDePasse($mdp)
     {

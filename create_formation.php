@@ -1,4 +1,5 @@
 <?php
+session_save_path('sessions');
 session_start();
 include_once("includes/database.php");
 
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contenuFormation = htmlspecialchars($_POST['contenu']);
     $cout = (int)$_POST['cout'];
     $dateLimiteInscription = htmlspecialchars($_POST['dateLimit']);
+    $nb_max_participants = htmlspecialchars($_POST['nb_max_participants']);
 
     try {
         // Démarrage de la transaction
@@ -30,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 1. Insérer les informations générales de la formation (table `Information`)
         $stmtInfo = $pdo->prepare("
             INSERT INTO Information (date_formation, heureDeb, heureFin, lieu, nb_max_participants) 
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
         ");
-        $stmtInfo->execute([$dateFormation, $heureDeb, $heureFin, $lieu, $nbMaxParticipants]);
+        $stmtInfo->execute([$dateFormation, $heureDeb, $heureFin, $lieu, $nb_max_participants]);
         $idInformation = $pdo->lastInsertId();
 
         // 2. Insérer la formation (table `Formation`)
@@ -117,4 +119,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "Erreur lors de la création de la formation : " . $e->getMessage();
     }
 }
-?>

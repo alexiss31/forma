@@ -1,6 +1,7 @@
 <?php
 include 'includes/database.php';
 include_once 'class/Utilisateur.php'; // Inclure la classe Utilisateur
+session_save_path('sessions');
 session_start();
 
 // Création d'une instance de la classe Utilisateur
@@ -8,25 +9,26 @@ $utilisateur = new Utilisateur($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $erreur = "";
-    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+    $login = $_POST['login'];
     $mdp = $_POST['mdp'];
 
-    if ($email === false) {
-        echo"Adresse e-mail invalide!";
+    if ($login === false) {
+        echo "Adresse e-mail invalide!";
     } elseif (empty($mdp)) {
         echo "Le mot de passe ne peut pas être vide!";
     } else {
-        $user = $utilisateur->seConnecter($email, $mdp);
-        if($user!=null){
-            $_SESSION['user_id'] = $user['id_stagiaire'];
+        $user = $utilisateur->seConnecter($login, $mdp);
+        if ($user != null) {
+            $_SESSION['user_id'] = $user['id_utilisateur'];
             $_SESSION['type'] = $user['type'];
             header('Location: index.php');
-            exit(); // Utiliser exit() après header() pemet d'arrêter l'exécution du script
-        }else{
+            exit(); // Utiliser exit() après header() permet d'arrêter l'exécution du script
+        } else {
             echo "Identifiants incorrects";
         }
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -50,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <form class="mt-6" action = "connexion.php" method ="post">
                 <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label> <br>
-                    <input name="email" type="email" id="email" class="mt-1 block w-full px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"> <br>
+                    <label for="login" class="block text-sm font-medium text-gray-700">Login</label> <br>
+                    <input name="login" type="text" id="login" class="mt-1 block w-full px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"> <br>
                 </div>
 
                 <div class="mb-6">

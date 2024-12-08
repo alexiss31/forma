@@ -1,4 +1,5 @@
 <?php
+session_save_path('sessions');
 session_start();
 
 include_once("includes/database.php");

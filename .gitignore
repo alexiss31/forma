@@ -1,3 +1,6 @@
+# Ignorer le dossier sauvegardant les variables de sessions
+/sessions
+
 # Ignorer les dossiers de dépendances de Node.js
 /node_modules/
 
