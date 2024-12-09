@@ -44,9 +44,9 @@ $stmt = $pdo->prepare("
     LEFT JOIN intervenir inte ON f.id_formation = inte.id_formation
     LEFT JOIN intervenant inter ON inte.id_intervenant = inter.id_intervenant
     LEFT JOIN viser vi ON f.id_formation = vi.id_formation
-    LEFT JOIN Public p ON vi.id_public = p.id_public
-    LEFT JOIN Contenir con ON f.id_formation = con.id_formation
-    LEFT JOIN Contenu c ON con.id_contenu = c.id_contenu
+    LEFT JOIN public p ON vi.id_public = p.id_public
+    LEFT JOIN contenir con ON f.id_formation = con.id_formation
+    LEFT JOIN contenu c ON con.id_contenu = c.id_contenu
     WHERE f.id_formation = ?
     GROUP BY f.id_formation
 ");

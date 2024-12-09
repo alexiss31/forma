@@ -2,7 +2,6 @@
 session_save_path('sessions');
 session_start();
 
-// Inclusion de la connexion à la base de données
 include_once("includes/database.php");
 
 // Vérifie si l'utilisateur est connecté
@@ -32,64 +31,74 @@ try {
     // Début de la transaction
     $pdo->beginTransaction();
 
-    // Récupération de l'id de la formation
+    // Étape 1 : Récupérer l'ID de l'information liée à la formation
     $stmtInfo = $pdo->prepare("SELECT id_information FROM formation WHERE id_formation = ?");
     $stmtInfo->execute([$idFormation]);
     $idInformation = $stmtInfo->fetchColumn();
 
     if (!$idInformation) {
-        throw new Exception("Formation introuvable.");
+        throw new Exception("Impossible de trouver les informations associées à la formation.");
     }
 
-    // Suppression des enregistrements dans `intervenir` pour cette formation
-    $stmtIntervenir = $pdo->prepare("DELETE FROM intervenir WHERE id_formation = ?");
-    $stmtIntervenir->execute([$idFormation]);
+    // Étape 2 : Supprimer les dépendances liées à cette formation
+    try {
+        $stmtIntervenir = $pdo->prepare("DELETE FROM intervenir WHERE id_formation = ?");
+        $stmtIntervenir->execute([$idFormation]);
+    } catch (PDOException $e) {
+        throw new Exception("Erreur lors de la suppression des dépendances dans la table 'intervenir': " . $e->getMessage());
+    }
 
-    // Suppression des enregistrements dans `viser` pour cette formation
-    $stmtViser = $pdo->prepare("DELETE FROM viser WHERE id_formation = ?");
-    $stmtViser->execute([$idFormation]);
+    try {
+        $stmtViser = $pdo->prepare("DELETE FROM viser WHERE id_formation = ?");
+        $stmtViser->execute([$idFormation]);
+    } catch (PDOException $e) {
+        throw new Exception("Erreur lors de la suppression des dépendances dans la table 'viser': " . $e->getMessage());
+    }
 
-    // Suppression des enregistrements dans `contenir` pour cette formation
-    $stmtContenir = $pdo->prepare("DELETE FROM contenir WHERE id_formation = ?");
-    $stmtContenir->execute([$idFormation]);
+    try {
+        $stmtContenir = $pdo->prepare("DELETE FROM contenir WHERE id_formation = ?");
+        $stmtContenir->execute([$idFormation]);
+    } catch (PDOException $e) {
+        throw new Exception("Erreur lors de la suppression des dépendances dans la table 'contenir': " . $e->getMessage());
+    }
 
-    // Suppression des contenus non utilisés
-    $stmtDeleteContenu = $pdo->prepare("
-        DELETE FROM contenu 
-        WHERE id_contenu NOT IN (SELECT DISTINCT id_contenu FROM contenir)
-    ");
-    $stmtDeleteContenu->execute();
+    // Étape 3 : Supprimer la formation elle-même
+    try {
+        $stmtFormation = $pdo->prepare("DELETE FROM formation WHERE id_formation = ?");
+        $stmtFormation->execute([$idFormation]);
+    } catch (PDOException $e) {
+        throw new Exception("Erreur lors de la suppression de la formation dans la table 'formation': " . $e->getMessage());
+    }
 
-    // Suppression des publics non utilisés
-    $stmtDeletePublic = $pdo->prepare("
-        DELETE FROM public 
-        WHERE id_public NOT IN (SELECT DISTINCT id_public FROM viser)
-    ");
-    $stmtDeletePublic->execute();
+    // Étape 4 : Supprimer les informations associées
+    try {
+        $stmtInfoDelete = $pdo->prepare("DELETE FROM information WHERE id_information = ?");
+        $stmtInfoDelete->execute([$idInformation]);
+    } catch (PDOException $e) {
+        throw new Exception("Erreur lors de la suppression des informations associées dans la table 'information': " . $e->getMessage());
+    }
 
-    // Suppression de l'information associée à la formation
-    $stmtInfoDelete = $pdo->prepare("DELETE FROM information WHERE id_information = ?");
-    $stmtInfoDelete->execute([$idInformation]);
+    // Vérification si la formation a bien été supprimée
+    $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM formation WHERE id_formation = ?");
+    $stmtCheck->execute([$idFormation]);
+    $formationExists = $stmtCheck->fetchColumn();
 
-    // Suppression de la formation elle-même
-    $stmtFormation = $pdo->prepare("DELETE FROM formation WHERE id_formation = ?");
-    $stmtFormation->execute([$idFormation]);
-
-    // Vérification finale
-    if ($stmtFormation->rowCount() > 0) {
+    if ($formationExists == 0) {
         $_SESSION['success_message'] = "La formation et toutes ses dépendances ont été supprimées avec succès.";
+        $pdo->commit();
     } else {
-        $_SESSION['error_message'] = "La formation spécifiée n'existe pas.";
+        throw new Exception("La formation n'a pas été correctement supprimée.");
     }
-
-    // Commit de la transaction
-    $pdo->commit();
 } catch (Exception $e) {
     // Annulation de la transaction en cas d'erreur
     $pdo->rollBack();
-    $_SESSION['error_message'] = "Une erreur est survenue lors de la suppression : " . $e->getMessage();
+    error_log("Erreur lors de la suppression : " . $e->getMessage());
+    $_SESSION['error_message'] = "Erreur lors de la suppression : " . $e->getMessage();
+    header("Location: gerer.php");
+    exit();
 }
 
 // Redirection après suppression
 header("Location: gerer.php");
 exit();
+?>
