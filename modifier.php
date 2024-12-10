@@ -32,7 +32,7 @@ $stmt = $pdo->prepare("
         i.heureFin, 
         i.lieu, 
         i.nb_max_participants,
-        GROUP_CONCAT(DISTINCT inter.nom SEPARATOR ', ') AS intervenants, 
+       GROUP_CONCAT(DISTINCT CONCAT(inter.nom, ' ', inter.prenom) SEPARATOR ', ') AS intervenants, 
         GROUP_CONCAT(DISTINCT p.libelle SEPARATOR ', ') AS public_vise, 
         f.objectifs, 
         GROUP_CONCAT(DISTINCT c.libelle SEPARATOR ', ') AS contenu, 
@@ -181,11 +181,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['intervenants']) ?></textarea>
             </div>
 
+            <?php
+            // Connexion à la base de données
+            include_once("includes/database.php");
+
+            try {
+                // Récupérer les publics depuis la table `public`
+                $stmtPublics = $pdo->query("SELECT id_public, libelle FROM public ORDER BY libelle ASC");
+                $publics = $stmtPublics->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                echo "Erreur lors de la récupération des publics : " . $e->getMessage();
+                $publics = [];
+            }
+            ?>
+
             <div>
                 <label for="public_vise" class="block text-sm font-medium">Public visé :</label>
-                <textarea id="public_vise" name="public_vise" rows="2"
-                    class="w-full p-2 border border-gray-300 rounded-md" required><?= htmlspecialchars($formation['public_vise']) ?></textarea>
+                <select id="public_vise" name="public_vise" required class="w-full p-2 border border-gray-300 rounded-md">
+                    <option value="" disabled>Choisissez un public visé</option>
+                    <?php foreach ($publics as $public): ?>
+                        <option value="<?= htmlspecialchars($public['id_public']) ?>"
+                            <?= isset($formation['public_vise']) && $formation['public_vise'] == $public['id_public'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($public['libelle']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
+
 
             <div>
                 <label for="objectifs" class="block text-sm font-medium">Objectifs :</label>

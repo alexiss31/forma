@@ -17,13 +17,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $heureDeb = htmlspecialchars($_POST['heureDeb']);
     $heureFin = htmlspecialchars($_POST['heureFin']);
     $lieu = htmlspecialchars($_POST['lieu']);
-    $intervenantNom = htmlspecialchars($_POST['intervenant']);
+    $intervenantNom = htmlspecialchars($_POST['intervenant']); // Nom Prénom
     $publicCible = htmlspecialchars($_POST['public']);
     $objectifs = htmlspecialchars($_POST['objectifs']);
     $contenuFormation = htmlspecialchars($_POST['contenu']);
     $cout = (int)$_POST['cout'];
     $dateLimiteInscription = htmlspecialchars($_POST['dateLimit']);
     $nb_max_participants = htmlspecialchars($_POST['nb_max_participants']);
+
+    // Séparation de la chaîne en deux parties
+    $nomPrenom = explode(' ', $intervenantNom);
+
+    // Assigner les valeurs respectives
+    $nom = $nomPrenom[0];    // Le premier élément est le nom
+    $prenom = $nomPrenom[1]; // Le deuxième élément est le prénom
 
     try {
         // Démarrage de la transaction
@@ -45,22 +52,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtFormation->execute([$libelle, $objectifs, $cout, $dateLimiteInscription, $idInformation]);
         $idFormation = $pdo->lastInsertId();
 
-        // 3. Insérer l'intervenant (table `intervenant`) s'il n'existe pas déjà
-        $stmtCheckIntervenant = $pdo->prepare("
-            SELECT id_intervenant FROM intervenant WHERE nom = ?
-        ");
-        $stmtCheckIntervenant->execute([$intervenantNom]);
-        $idIntervenant = $stmtCheckIntervenant->fetchColumn();
+        // Insérer l'intervenant dans la base
 
-        if (!$idIntervenant) {
-            $stmtIntervenant = $pdo->prepare("
-                INSERT INTO intervenant (nom, prenom) 
-                VALUES (?, ?)
-            ");
-            $intervenantPrenom = ""; // Pas fourni dans le formulaire
-            $stmtIntervenant->execute([$intervenantNom, $intervenantPrenom]);
-            $idIntervenant = $pdo->lastInsertId();
-        }
+        $stmtIntervenant = $pdo->prepare("
+    INSERT INTO intervenant (nom, prenom, id_utilisateur) 
+    VALUES (?, ?, ?)
+");
+        $stmtIntervenant->execute([$nom, $prenom, $idUtilisateur]);
+        $idIntervenant = $pdo->lastInsertId();
+
 
         // 4. Associer l'intervenant à la formation (table `intervenir`)
         $stmtIntervenir = $pdo->prepare("

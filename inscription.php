@@ -223,27 +223,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium">Nom du stagiaire :</label>
-                        <input type="text" name="nom_stagiaire" id="nom_stagiaire" value="<?= htmlspecialchars($user['nom_stagiaire']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
+                        <input type="text" name="nom_stagiaire" id="nom_stagiaire" value="<?= htmlspecialchars($user['nom']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Code Postal :</label>
-                        <input type="text" name="code_postal_stagiaire" id="code_postal_stagiaire" value="<?= htmlspecialchars($user['code_postal_stagiaire']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
+                        <input type="text" name="code_postal_stagiaire" id="code_postal_stagiaire" value="<?= htmlspecialchars($user['cp']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Ville :</label>
-                        <input type="text" name="ville_stagiaire" id="ville_stagiaire" value="<?= htmlspecialchars($user['ville_stagiaire']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
+                        <input type="text" name="ville_stagiaire" id="ville_stagiaire" value="<?= htmlspecialchars($user['ville']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Email :</label>
-                        <input type="email" name="email_stagiaire" id="email_stagiaire" value="<?= htmlspecialchars($user['email_stagiaire']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
+                        <input type="email" name="email_stagiaire" id="email_stagiaire" value="<?= htmlspecialchars($user['email']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Statut :</label>
-                        <input type="text" name="statut_stagiaire" id="statut_stagiaire" value="<?= htmlspecialchars($user['statut_stagiaire']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
+                        <input type="text" name="statut_stagiaire" id="statut_stagiaire" value="<?= htmlspecialchars($user['type']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Fonction :</label>
-                        <input type="text" name="fonction_stagiaire" id="fonction_stagiaire" value="<?= htmlspecialchars($user['fonction_stagiaire']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
+                        <input type="text" name="fonction_stagiaire" id="fonction_stagiaire" value="<?= htmlspecialchars($user['fonction']) ?>" class="w-full p-2 border border-gray-300 rounded-md" <?= ($_SESSION['type'] === 'admin') ? '' : 'disabled' ?>>
                     </div>
                 </div>
             </fieldset>

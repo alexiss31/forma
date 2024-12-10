@@ -131,10 +131,30 @@ if (isset($_SESSION['error_message'])) {
                             <input type="text" name="intervenant" id="intervenant" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
                         </div>
 
+                        <?php
+                        // Connexion à la base de données
+                        include_once("includes/database.php");
+
+                        try {
+                            // Récupérer les publics depuis la table `public`
+                            $stmtPublics = $pdo->query("SELECT id_public, libelle FROM public ORDER BY libelle ASC");
+                            $publics = $stmtPublics->fetchAll(PDO::FETCH_ASSOC);
+                        } catch (Exception $e) {
+                            echo "Erreur lors de la récupération des publics : " . $e->getMessage();
+                            $publics = [];
+                        }
+                        ?>
+
                         <div class="mb-4">
                             <label for="public" class="block text-sm font-semibold text-gray-800">Public</label>
-                            <input type="text" name="public" id="public" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <select name="public" id="public" required class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <option value="" disabled selected>Choisissez un public</option>
+                                <?php foreach ($publics as $public): ?>
+                                    <option value="<?= htmlspecialchars($public['id_public']) ?>"><?= htmlspecialchars($public['libelle']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
+
 
                         <div class="mb-4">
                             <label for="objectifs" class="block text-sm font-semibold text-gray-800">Objectifs de la formation</label>
