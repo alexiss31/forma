@@ -16,142 +16,160 @@ if ($_SESSION['type'] === 'directeur') {
     exit();
 }
 
-// Récupération des informations de l'utilisateur connecté
-$stmtUser = $pdo->prepare("SELECT s.*, u.login, r.nom_role AS type, a.*
-                            FROM stagiaire s
-                            JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur
-                            JOIN role r ON u.id_role = r.id_role
-                            JOIN association a ON s.n_icom = a.n_icom
-                            WHERE s.id_utilisateur = ?");
-$stmtUser->execute([$_SESSION['user_id']]);
-$user = $stmtUser->fetch(PDO::FETCH_ASSOC);
+// Récupérer le nombre maximum de participants pour la formation
+/**$stmtMaxParticipants = $pdo->prepare("SELECT nb_max_participants FROM information WHERE id_information = ?");
+$stmtMaxParticipants->execute([$idFormation]);
+$formation = $stmtMaxParticipants->fetch(PDO::FETCH_ASSOC);
 
-// Stocker le n_icom dans une variable de session
-$_SESSION['n_icom'] = $user['n_icom'] ?? null;
+// Récupérer le nombre actuel de participants inscrits à cette formation
+$stmtNbParticipants = $pdo->prepare("SELECT COUNT(*) AS nb_actuel_participants FROM stagiaire_formation sf JOIN formation f ON sf.id_formation = f.id_formation JOIN information i ON f.id_formation = i.id_information WHERE i.id_information = ?");
+$stmtNbParticipants->execute([$idFormation]);
+$nbParticipants = $stmtNbParticipants->fetchColumn();
 
-// Récupération des associations existantes
-$stmtAssoc = $pdo->query("SELECT n_icom, nom_association, prenom_interlocuteur, nom_interlocuteur, email_interlocuteur, tel_interlocuteur, fax_interlocuteur FROM association");
-$associations = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
+// Vérifier si le nombre d'inscriptions dépasse le maximum
+if ($nbParticipants >= $formation['nombre_max_participants']) {
+    // Nombre maximum atteint, refuser l'inscription
+    $_SESSION['error_message'] = "Le nombre maximum de participants a été atteint pour cette formation. Votre inscription ne peut pas être acceptée.";
+    header("Location: inscription.php");
+    exit();
+} else {}*/
+    // Récupération des informations de l'utilisateur connecté
+    $stmtUser = $pdo->prepare("SELECT s.*, u.login, r.nom_role AS type, a.*
+FROM stagiaire s
+JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur
+JOIN role r ON u.id_role = r.id_role
+JOIN association a ON s.n_icom = a.n_icom
+WHERE s.id_utilisateur = ?");
+    $stmtUser->execute([$_SESSION['user_id']]);
+    $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
-// Vérification du nombre d'inscriptions pour l'année en cours
-$stmtCheckInscriptions = $pdo->prepare("
-    SELECT COUNT(*) AS count
-    FROM stagiaire_formation sf
-    JOIN formation f ON sf.id_formation = f.id_formation
-    WHERE sf.id_stagiaire = (SELECT id_stagiaire FROM stagiaire WHERE id_utilisateur = ?)
-    AND YEAR(f.date_formation) = YEAR(CURDATE())
+    // Stocker le n_icom dans une variable de session
+    $_SESSION['n_icom'] = $user['n_icom'] ?? null;
+
+    // Récupération des associations existantes
+    $stmtAssoc = $pdo->query("SELECT n_icom, nom_association, prenom_interlocuteur, nom_interlocuteur, email_interlocuteur, tel_interlocuteur, fax_interlocuteur FROM association");
+    $associations = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
+
+    // Vérification du nombre d'inscriptions pour l'année en cours
+    $stmtCheckInscriptions = $pdo->prepare("
+SELECT COUNT(*) AS count
+FROM stagiaire_formation sf
+JOIN formation f ON sf.id_formation = f.id_formation
+WHERE sf.id_stagiaire = (SELECT id_stagiaire FROM stagiaire WHERE id_utilisateur = ?)
+AND YEAR(f.date_formation) = YEAR(CURDATE())
 ");
-$stmtCheckInscriptions->execute([$_SESSION['user_id']]);
-$inscriptionsCount = $stmtCheckInscriptions->fetch(PDO::FETCH_ASSOC);
+    $stmtCheckInscriptions->execute([$_SESSION['user_id']]);
+    $inscriptionsCount = $stmtCheckInscriptions->fetch(PDO::FETCH_ASSOC);
 
-// Traitement du formulaire d'inscription
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Vérification du quota d'inscriptions
-    if ($inscriptionsCount['count'] >= 3) {
-        $_SESSION['error_message'] = "Vous avez atteint le quota de 3 inscriptions pour l'année.";
-        header("Location: inscription.php");
-        exit();
-    }
+    // Traitement du formulaire d'inscription
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Vérification du quota d'inscriptions
+        if ($inscriptionsCount['count'] >= 3) {
+            $_SESSION['error_message'] = "Vous avez atteint le quota de 3 inscriptions pour l'année.";
+            header("Location: inscription.php");
+            exit();
+        }
 
-    // Formation sélectionnée
-    $idFormation = $_POST['formation'] ?? null;
+        // Formation sélectionnée
+        $idFormation = $_POST['formation'] ?? null;
 
-    // Vérification de la date limite d'inscription
-    $stmtCheckDateLimit = $pdo->prepare("SELECT date_limite_inscription FROM formation WHERE id_formation = ?");
-    $stmtCheckDateLimit->execute([$idFormation]);
-    $dateLimit = $stmtCheckDateLimit->fetch(PDO::FETCH_ASSOC);
+        // Vérification de la date limite d'inscription
+        $stmtCheckDateLimit = $pdo->prepare("SELECT date_limite_inscription FROM formation WHERE id_formation = ?");
+        $stmtCheckDateLimit->execute([$idFormation]);
+        $dateLimit = $stmtCheckDateLimit->fetch(PDO::FETCH_ASSOC);
 
-    if (strtotime(date('Y-m-d')) > strtotime($dateLimit['date_limite_inscription'])) {
-        $_SESSION['error_message'] = "La date limite d'inscription pour cette formation est dépassée.";
-        header("Location: inscription.php");
-        exit();
-    }
-
-    try {
-        // Démarage de la transaction
-        $pdo->beginTransaction();
-        echo "Transaction démarrée.<br>";
-
-        // Insertion de l'inscription dans la table stagiaire_formation
-        $stmtInscription = $pdo->prepare("
-            INSERT INTO stagiaire_formation (id_stagiaire, id_formation, date_inscription)
-            VALUES (?, ?, CURDATE())
-        ");
-        $stmtInscription->execute([$user['id_stagiaire'], $idFormation]);
-        echo "Inscription insérée.<br>";
-
-        // Validation de la transaction
-        $pdo->commit();
-        echo "Transaction validée.<br>";
-
-        // Message de succès
-        $_SESSION['success_message'] = "Vous avez été inscrit avec succès à la formation.";
-        header("Location: index.php");
-        exit();
-    } catch (PDOException $e) {
-        // Annulation de la transaction en cas d'erreur
-        $pdo->rollBack();
-        echo "Transaction annulée.<br>";
-        echo "Erreur lors de l'inscription : " . $e->getMessage();
-        $_SESSION['error_message'] = "Erreur lors de l'inscription : " . $e->getMessage();
-        header("Location: inscription.php");
-        exit();
-    }
-
-    // Traitement spécifique pour l'admin
-    if ($_SESSION['type'] === 'admin') {
-        // Récupérer les valeurs du formulaire
-        $nomAssociation = $_POST['nom_association'];
-        $icom = $_POST['icom'];
-        $nomInterlocuteur = $_POST['nom_interlocuteur'];
-        $emailInterlocuteur = $_POST['email_interlocuteur'];
-        $telInterlocuteur = $_POST['tel_interlocuteur'];
-        $faxInterlocuteur = $_POST['fax_interlocuteur'];
-        $nomStagiaire = $_POST['nom_stagiaire'];
-        $codePostalStagiaire = $_POST['code_postal_stagiaire'];
-        $villeStagiaire = $_POST['ville_stagiaire'];
-        $emailStagiaire = $_POST['email_stagiaire'];
-        $statutStagiaire = $_POST['statut_stagiaire'];
-        $fonctionStagiaire = $_POST['fonction_stagiaire'];
+        if (strtotime(date('Y-m-d')) > strtotime($dateLimit['date_limite_inscription'])) {
+            $_SESSION['error_message'] = "La date limite d'inscription pour cette formation est dépassée.";
+            header("Location: inscription.php");
+            exit();
+        }
 
         try {
             // Démarage de la transaction
             $pdo->beginTransaction();
             echo "Transaction démarrée.<br>";
 
-            // Insertion dans la table association (si l'association n'existe pas)
-            $stmtAssocInsert = $pdo->prepare("
-                INSERT INTO association (nom_association, prenom_interlocuteur, nom_interlocuteur, email_interlocuteur, tel_interlocuteur, fax_interlocuteur)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
-            $stmtAssocInsert->execute([$nomAssociation, $nomInterlocuteur, $emailInterlocuteur, $telInterlocuteur, $faxInterlocuteur]);
-
-            // Insertion dans la table stagiaire
-            $stmtStagiaireInsert = $pdo->prepare("
-                INSERT INTO stagiaire (nom, prenom, cp, ville, email, statut, fonction, n_icom)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmtStagiaireInsert->execute([$nomStagiaire, $codePostalStagiaire, $villeStagiaire, $emailStagiaire, $statutStagiaire, $fonctionStagiaire, $icom]);
+            // Insertion de l'inscription dans la table stagiaire_formation
+            $stmtInscription = $pdo->prepare("
+INSERT INTO stagiaire_formation (id_stagiaire, id_formation, date_inscription)
+VALUES (?, ?, CURDATE())
+");
+            $stmtInscription->execute([$user['id_stagiaire'], $idFormation]);
+            echo "Inscription insérée.<br>";
 
             // Validation de la transaction
             $pdo->commit();
             echo "Transaction validée.<br>";
 
             // Message de succès
-            $_SESSION['success_message'] = "Les informations ont été ajoutées avec succès.";
+            $_SESSION['success_message'] = "Vous avez été inscrit avec succès à la formation.";
             header("Location: index.php");
             exit();
         } catch (PDOException $e) {
             // Annulation de la transaction en cas d'erreur
             $pdo->rollBack();
             echo "Transaction annulée.<br>";
-            echo "Erreur lors de l'insertion : " . $e->getMessage();
-            $_SESSION['error_message'] = "Erreur lors de l'insertion : " . $e->getMessage();
+            echo "Erreur lors de l'inscription : " . $e->getMessage();
+            $_SESSION['error_message'] = "Erreur lors de l'inscription : " . $e->getMessage();
             header("Location: inscription.php");
             exit();
         }
+
+        // Traitement spécifique pour l'admin
+        if ($_SESSION['type'] === 'admin') {
+            // Récupérer les valeurs du formulaire
+            $nomAssociation = $_POST['nom_association'];
+            $icom = $_POST['icom'];
+            $nomInterlocuteur = $_POST['nom_interlocuteur'];
+            $emailInterlocuteur = $_POST['email_interlocuteur'];
+            $telInterlocuteur = $_POST['tel_interlocuteur'];
+            $faxInterlocuteur = $_POST['fax_interlocuteur'];
+            $nomStagiaire = $_POST['nom_stagiaire'];
+            $codePostalStagiaire = $_POST['code_postal_stagiaire'];
+            $villeStagiaire = $_POST['ville_stagiaire'];
+            $emailStagiaire = $_POST['email_stagiaire'];
+            $statutStagiaire = $_POST['statut_stagiaire'];
+            $fonctionStagiaire = $_POST['fonction_stagiaire'];
+
+            try {
+                // Démarage de la transaction
+                $pdo->beginTransaction();
+                echo "Transaction démarrée.<br>";
+
+                // Insertion dans la table association (si l'association n'existe pas)
+                $stmtAssocInsert = $pdo->prepare("
+INSERT INTO association (nom_association, prenom_interlocuteur, nom_interlocuteur, email_interlocuteur, tel_interlocuteur, fax_interlocuteur)
+VALUES (?, ?, ?, ?, ?, ?)
+");
+                $stmtAssocInsert->execute([$nomAssociation, $nomInterlocuteur, $emailInterlocuteur, $telInterlocuteur, $faxInterlocuteur]);
+
+                // Insertion dans la table stagiaire
+                $stmtStagiaireInsert = $pdo->prepare("
+INSERT INTO stagiaire (nom, prenom, cp, ville, email, statut, fonction, n_icom)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+");
+                $stmtStagiaireInsert->execute([$nomStagiaire, $codePostalStagiaire, $villeStagiaire, $emailStagiaire, $statutStagiaire, $fonctionStagiaire, $icom]);
+
+                // Validation de la transaction
+                $pdo->commit();
+                echo "Transaction validée.<br>";
+
+                // Message de succès
+                $_SESSION['success_message'] = "Les informations ont été ajoutées avec succès.";
+                header("Location: index.php");
+                exit();
+            } catch (PDOException $e) {
+                // Annulation de la transaction en cas d'erreur
+                $pdo->rollBack();
+                echo "Transaction annulée.<br>";
+                echo "Erreur lors de l'insertion : " . $e->getMessage();
+                $_SESSION['error_message'] = "Erreur lors de l'insertion : " . $e->getMessage();
+                header("Location: inscription.php");
+                exit();
+            }
+        }
     }
-}
+
 
 ?>
 

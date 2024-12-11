@@ -185,28 +185,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Connexion à la base de données
             include_once("includes/database.php");
 
+
             try {
-                // Récupérer les publics depuis la table `public`
-                $stmtPublics = $pdo->query("SELECT id_public, libelle FROM public ORDER BY libelle ASC");
-                $publics = $stmtPublics->fetchAll(PDO::FETCH_ASSOC);
+                // Récupérer le public visé actuel pour la formation
+                $stmtCurrentPublic = $pdo->prepare("
+                    SELECT p.id_public, p.libelle 
+                    FROM public p
+                    JOIN viser v ON p.id_public = v.id_public
+                    WHERE v.id_formation = ?
+                ");
+                $stmtCurrentPublic->execute([$idFormation]);
+                $currentPublic = $stmtCurrentPublic->fetch(PDO::FETCH_ASSOC);
+
+                // Récupérer tous les publics disponibles
+                $stmtAllPublics = $pdo->query("SELECT id_public, libelle FROM public");
+                $allPublics = $stmtAllPublics->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {
-                echo "Erreur lors de la récupération des publics : " . $e->getMessage();
-                $publics = [];
+                echo "Erreur lors de la récupération des données : " . $e->getMessage();
+                $currentPublic = [];
+                $allPublics = [];
             }
             ?>
 
             <div>
                 <label for="public_vise" class="block text-sm font-medium">Public visé :</label>
                 <select id="public_vise" name="public_vise" required class="w-full p-2 border border-gray-300 rounded-md">
-                    <option value="" disabled>Choisissez un public visé</option>
-                    <?php foreach ($publics as $public): ?>
+                    <?php foreach ($allPublics as $public): ?>
                         <option value="<?= htmlspecialchars($public['id_public']) ?>"
-                            <?= isset($formation['public_vise']) && $formation['public_vise'] == $public['id_public'] ? 'selected' : '' ?>>
+                            <?= isset($currentPublic['id_public']) && $currentPublic['id_public'] == $public['id_public'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($public['libelle']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
+
+
 
 
             <div>

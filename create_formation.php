@@ -55,10 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Insérer l'intervenant dans la base
 
         $stmtIntervenant = $pdo->prepare("
-    INSERT INTO intervenant (nom, prenom, id_utilisateur) 
-    VALUES (?, ?, ?)
+    INSERT INTO intervenant (nom, prenom) 
+    VALUES (?, ?)
 ");
-        $stmtIntervenant->execute([$nom, $prenom, $idUtilisateur]);
+        $stmtIntervenant->execute([$nom, $prenom]);
         $idIntervenant = $pdo->lastInsertId();
 
 
@@ -76,21 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtCheckPublic->execute([$publicCible]);
         $idPublic = $stmtCheckPublic->fetchColumn();
 
-        if (!$idPublic) {
-            $stmtPublic = $pdo->prepare("
-                INSERT INTO Public (libelle) 
-                VALUES (?)
-            ");
-            $stmtPublic->execute([$publicCible]);
-            $idPublic = $pdo->lastInsertId();
-        }
-
         // 6. Associer le public cible à la formation (table `viser`)
         $stmtViser = $pdo->prepare("
             INSERT INTO viser (id_formation, id_public) 
             VALUES (?, ?)
         ");
-        $stmtViser->execute([$idFormation, $idPublic]);
+        $stmtViser->execute([$idFormation, $publicCible]);
 
         // 7. Insérer le contenu de la formation (table `Contenu`)
         $stmtContenu = $pdo->prepare("

@@ -49,6 +49,17 @@ try {
     $stmtIntervenir = $pdo->prepare("DELETE FROM intervenir WHERE id_formation = ?");
     $stmtIntervenir->execute([$idFormation]);
 
+    // Suppression des enregistrements dans `intervenant` pour cette formation
+    $stmtDeleteIntervenants = $pdo->prepare("
+    DELETE FROM intervenant 
+    WHERE id_intervenant NOT IN (
+        SELECT DISTINCT id_intervenant 
+        FROM intervenir
+    )
+");
+    $stmtDeleteIntervenants->execute();
+
+
     // Suppression des enregistrements dans `viser` pour cette formation
     $stmtViser = $pdo->prepare("DELETE FROM viser WHERE id_formation = ?");
     $stmtViser->execute([$idFormation]);
